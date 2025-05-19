@@ -9,7 +9,7 @@ import (
 
 func (r *Repository) CreateUser(ctx context.Context, user *models.User) error {
 	query := `
-		INSERT INTO users (id, email, name, password_hash, is_admin, created_at)
+		INSERT INTO users (id, email, name, password, is_admin, created_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 	_, err := r.db.ExecContext(ctx, query,
@@ -33,16 +33,16 @@ func (r *Repository) GetUserByID(ctx context.Context, id string) (*models.User, 
 
 func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*models.User, error) {
 	query := `
-		SELECT id, email, name, password_hash, is_admin, created_at
+		SELECT id, email, name, password, is_admin, created_at
 		FROM users WHERE email = $1
 	`
 	user := &models.User{}
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
 		&user.ID, &user.Email, &user.Name, &user.Password, &user.IsAdmin, &user.CreatedAt)
-	if err == sql.ErrNoRows {
-		return nil, nil
+	if err != nil {
+		return nil, err
 	}
-	return user, err
+	return user, nil
 }
 
 func (r *Repository) UpdateUser(ctx context.Context, user *models.User) error {

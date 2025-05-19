@@ -3,16 +3,19 @@ package handler
 import (
 	"database/sql"
 	"encoding/json"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
+	"errors"
 	"net/http"
 	"os"
-	"roster-management/internal/models"
-	"roster-management/pkg/jwt"
 	"strconv"
 	"time"
 
-	jwtGo "github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
+
+	"roster-management/internal/models"
+	jwtPkg "roster-management/pkg/jwt"
 )
 
 // RegisterWorker handles new worker registration
@@ -21,6 +24,7 @@ func (h *Handler) RegisterWorker(w http.ResponseWriter, r *http.Request) {
 
 	user := new(models.User)
 	if err := json.NewDecoder(r.Body).Decode(user); err != nil {
+		logrus.Error(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -31,6 +35,7 @@ func (h *Handler) RegisterWorker(w http.ResponseWriter, r *http.Request) {
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
+		logrus.Error(err)
 		http.Error(w, "Error processing password", http.StatusInternalServerError)
 		return
 	}
@@ -42,6 +47,7 @@ func (h *Handler) RegisterWorker(w http.ResponseWriter, r *http.Request) {
 	err = h.repo.CreateUser(ctx, user)
 
 	if err != nil {
+		logrus.Error(err)
 		http.Error(w, "Error creating user", http.StatusInternalServerError)
 		return
 	}
@@ -52,37 +58,41 @@ func (h *Handler) RegisterWorker(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	_ = json.NewEncoder(w).Encode(user)
+
+	logrus.Printf("successfully creates user with an email: %s ", user.Email)
 }
 
 // Login handles user authentication
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	var loginReq models.LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&loginReq); err != nil {
+		logrus.Error(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	user, err := h.repo.GetUserByEmail(ctx, loginReq.Email)
-	if err == sql.ErrNoRows {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+	if errors.Is(err, sql.ErrNoRows) {
+		logrus.Error(err)
+		http.Error(w, "user not found", http.StatusUnauthorized)
 		return
 	} else if err != nil {
-		http.Error(w, "Database error", http.StatusInternalServerError)
+		logrus.Error(err)
+		http.Error(w, "database error", http.StatusInternalServerError)
 		return
 	}
 
 	// Verify password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginReq.Password)); err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		logrus.Error(err)
+		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
+
+	// hide password
+	user.Password = ""
 
 	// Generate JWT token
 	jwtExpiry, _ := strconv.Atoi(os.Getenv("JWT_EXPIRY"))
@@ -90,14 +100,15 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		jwtExpiry = 60
 	}
 	expAt := time.Now().Add(time.Duration(jwtExpiry) * time.Minute)
-	claims := jwtGo.MapClaims{
+	claims := jwt.MapClaims{
 		"email":     user.Email,
-		"is":        user.ID,
+		"id":        user.ID,
 		"expire_at": expAt.Format(time.RFC3339Nano),
 	}
 
-	jwtToken, err := jwt.CreateToken(claims, h.jwtCfg.Key)
+	jwtToken, err := jwtPkg.CreateToken(claims, h.jwtCfg.Key)
 	if err != nil {
+		logrus.Error(err)
 		http.Error(w, "unable to login", http.StatusInternalServerError)
 		return
 	}
@@ -110,6 +121,8 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
+
+	logrus.Printf("successfully login user with an email: %s ", user.Email)
 }
 
 // AuthMiddleware checks for valid JWT token and user role
