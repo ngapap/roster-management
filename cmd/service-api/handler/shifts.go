@@ -11,6 +11,19 @@ import (
 // CreateShift creates a new shift, shift must be on 30 minutes interval and the duration must be between 4 and 12 hours.
 func (h *Handler) CreateShift(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+
+	userID := ctx.Value("user_id").(string)
+	user, err := h.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		logrus.Error(err)
+		http.Error(w, "err when fetch user info", http.StatusInternalServerError)
+		return
+	}
+	if !user.IsAdmin {
+		http.Error(w, "require admin access", http.StatusUnauthorized)
+		return
+	}
+
 	now := time.Now()
 
 	shift := new(models.Shift)
@@ -57,7 +70,7 @@ func (h *Handler) CreateShift(w http.ResponseWriter, r *http.Request) {
 	ID, err := h.repo.CreateShift(ctx, shift)
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "err when creating shift", http.StatusInternalServerError)
 		return
 	}
 	shift.ID = ID

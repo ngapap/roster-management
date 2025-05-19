@@ -41,7 +41,7 @@ func VerifyAuthenticationToken(jwtKey string) func(handler http.Handler) http.Ha
 
 			// pass several data on request context
 			ctx = context.WithValue(ctx, "email", claims["email"])
-			ctx = context.WithValue(ctx, "id", claims["id"])
+			ctx = context.WithValue(ctx, "user_id", claims["id"])
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
