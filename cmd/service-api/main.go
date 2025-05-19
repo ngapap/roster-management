@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"roster-management/pkg/middlewares"
 	"syscall"
 	"time"
 
@@ -61,7 +62,6 @@ func main() {
 	if err := config.ReadInConfig(); err != nil {
 		panic(err)
 	}
-
 	repo, err := postgres.NewRepositoryFromConfig(config)
 	if err != nil {
 		panic(err)
@@ -70,6 +70,10 @@ func main() {
 	hand := handler.NewHandlers(repo, config.GetString("JWT_KEY"), config.GetInt("JWT_EXPIRY"))
 
 	mux := new(customMux)
+
+	//set middlewares
+	mux.Use(middlewares.VerifyAuthenticationToken(config.GetString("JWT_KEY")))
+
 	mux.HandleFunc("GET /ping", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("pong"))
 	})
