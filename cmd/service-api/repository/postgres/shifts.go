@@ -3,22 +3,35 @@ package postgres
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"roster-management/internal/models"
 	"roster-management/pkg/postgres"
 )
 
-func (r *Repository) CreateShift(ctx context.Context, shift *models.Shift) error {
+func (r *Repository) CreateShift(ctx context.Context, shift *models.Shift) (string, error) {
 	query := `
-		INSERT INTO shifts (id, start_time, end_time, role,  created_at,  is_available)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO shifts (start_time, end_time, assigned_to, role,  is_available)
+		VALUES ($1, $2, $3, $4, $5) RETURNING id;
 	`
-	_, err := r.db.ExecContext(ctx, query,
-		shift.ID, shift.StartTime, shift.EndTime,
-		shift.Role, shift.CreatedAt, shift.IsAvailable)
+	workerID := sql.NullString{
+		String: shift.AssignedTo,
+		Valid:  true,
+	}
+	if err := uuid.Validate(shift.AssignedTo); err != nil {
+		workerID.Valid = false
+	}
+	row := r.db.QueryRowContext(ctx, query,
+		shift.StartTime, shift.EndTime, workerID,
+		shift.Role, shift.IsAvailable)
+	var ID string
+	if err := row.Scan(&ID); err != nil {
+		return "", err
+	}
 
-	return err
+	return ID, nil
 }
 
 func (r *Repository) GetShifts(ctx context.Context, opts ...models.ShiftFilterOption) ([]*models.Shift, error) {
@@ -29,15 +42,7 @@ func (r *Repository) GetShifts(ctx context.Context, opts ...models.ShiftFilterOp
 
 	query, params := r.buildGetShiftFilter(filter)
 
-	stmt, err := r.db.PrepareNamedContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer func(stmt *sqlx.NamedStmt) {
-		_ = stmt.Close()
-	}(stmt)
-
-	rows, err := stmt.QueryxContext(ctx, params)
+	rows, err := r.db.NamedQueryContext(ctx, query, params)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +53,16 @@ func (r *Repository) GetShifts(ctx context.Context, opts ...models.ShiftFilterOp
 	var res []*models.Shift
 	for rows.Next() {
 		var item models.Shift
-		if err := rows.StructScan(&item); err != nil {
+		workerID := sql.NullString{}
+		if err := rows.Scan(
+			&item.ID,
+			&item.StartTime,
+			&item.EndTime,
+			&item.Role,
+			&workerID,
+			&item.IsAvailable,
+			&item.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		res = append(res, &item)
@@ -82,7 +96,7 @@ func (r *Repository) DeleteShift(ctx context.Context, ID string) error {
 
 func (r *Repository) buildGetShiftFilter(filter *models.ShiftFilter) (string, map[string]interface{}) {
 	params := map[string]interface{}{}
-	query := bytes.NewBufferString(`SELECT id, start_time, end_time, role, assigned_to, is_available,  created_at, created_by`)
+	query := bytes.NewBufferString(`SELECT id, start_time, end_time, role, assigned_to, is_available,  created_at FROM shifts`)
 
 	conds := postgres.Conditions{}
 	if filter.ID != "" {
@@ -161,7 +175,7 @@ func (r *Repository) buildGetShiftFilter(filter *models.ShiftFilter) (string, ma
 		query.WriteString(fmt.Sprintf(format, cond.Field, cond.Operator, cond.Value))
 	}
 
-	query.WriteString(fmt.Sprintf(" ORDER BY due_date %s ", postgres.OrderByDateAscending.String()))
+	query.WriteString(fmt.Sprintf(" ORDER BY created_at %s ", postgres.OrderByDateAscending.String()))
 
 	return query.String(), params
 }

@@ -1,8 +1,8 @@
 -- +goose Up
 CREATE TABLE shifts (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    start_time TIME NOT NULL,
-    end_time TIME NOT NULL,
+    start_time TIMESTAMP NOT NULL,
+    end_time TIMESTAMP NOT NULL,
     role VARCHAR(100) NOT NULL,
     assigned_to UUID REFERENCES users(id),
     is_available BOOLEAN NOT NULL DEFAULT true,

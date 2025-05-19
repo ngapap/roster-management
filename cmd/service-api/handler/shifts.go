@@ -54,11 +54,13 @@ func (h *Handler) CreateShift(w http.ResponseWriter, r *http.Request) {
 		shift.IsAvailable = false
 	}
 
-	if err := h.repo.CreateShift(ctx, shift); err != nil {
+	ID, err := h.repo.CreateShift(ctx, shift)
+	if err != nil {
 		logrus.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	shift.ID = ID
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -67,6 +69,7 @@ func (h *Handler) CreateShift(w http.ResponseWriter, r *http.Request) {
 	logrus.Println("successfully creates shift")
 }
 
+// GetAvailableShifts will return all of unassigned shifts
 func (h *Handler) GetAvailableShifts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

@@ -33,7 +33,7 @@ func (r *Repository) GetShiftRequestByID(ctx context.Context, ID string) (*model
 	return request, err
 }
 
-func (r *Repository) GetPending(ctx context.Context) ([]*models.ShiftRequest, error) {
+func (r *Repository) GetPendingShiftRequest(ctx context.Context) ([]*models.ShiftRequest, error) {
 	query := `
 		SELECT id, shift_id, worker_id, status, created_at, updated_at
 		FROM shift_requests WHERE status = 'pending'
