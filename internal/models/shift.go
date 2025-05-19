@@ -4,6 +4,14 @@ import (
 	"time"
 )
 
+type StrBool string
+
+const (
+	EmptyStrBool StrBool = ""
+	TrueStr      StrBool = "true"
+	FalseStr     StrBool = "false"
+)
+
 type Shift struct {
 	ID          string    `json:"id" db:"id"`
 	StartTime   time.Time `json:"start_time" db:"start_time"`
@@ -15,11 +23,49 @@ type Shift struct {
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }
 
-type ShiftRequest struct {
-	ID        string    `json:"id" db:"id"`
-	ShiftID   string    `json:"shift_id" db:"shift_id"`
-	WorkerID  string    `json:"worker_id" db:"worker_id"`
-	Status    string    `json:"status" db:"status"` // pending, approved, rejected
-	Note      string    `json:"note" db:"note"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
+type ShiftFilter struct {
+	ID          string    `json:"id"`
+	StartTime   time.Time `json:"start_time"`
+	EndTime     time.Time `json:"end_time"`
+	Role        string    `json:"role"`
+	AssignedTo  string    `json:"assigned_to"`
+	IsAvailable StrBool   `json:"is_available"`
+}
+
+type ShiftFilterOption func(*ShiftFilter)
+
+func WithID(id string) ShiftFilterOption {
+	return func(filter *ShiftFilter) {
+		filter.ID = id
+	}
+}
+
+func WithStartTime(startTime time.Time) ShiftFilterOption {
+	return func(filter *ShiftFilter) {
+		filter.StartTime = startTime
+	}
+}
+
+func WithEndTime(endTime time.Time) ShiftFilterOption {
+	return func(filter *ShiftFilter) {
+		filter.EndTime = endTime
+	}
+}
+
+func WithRole(role string) ShiftFilterOption {
+	return func(filter *ShiftFilter) {
+		filter.Role = role
+	}
+}
+
+func WithAssignedTo(assignedTo string) ShiftFilterOption {
+	return func(filter *ShiftFilter) {
+		filter.AssignedTo = assignedTo
+	}
+}
+
+func WithIsAvailable(isAvailable StrBool) ShiftFilterOption {
+	return func(filter *ShiftFilter) {
+		filter.IsAvailable = isAvailable
+	}
 }

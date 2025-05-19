@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"os"
-	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
@@ -44,9 +42,7 @@ func (h *Handler) RegisterWorker(w http.ResponseWriter, r *http.Request) {
 	user.Password = string(hashedPassword)
 	user.CreatedAt = time.Now().UTC()
 
-	err = h.repo.CreateUser(ctx, user)
-
-	if err != nil {
+	if err := h.repo.CreateUser(ctx, user); err != nil {
 		logrus.Error(err)
 		http.Error(w, "Error creating user", http.StatusInternalServerError)
 		return
@@ -91,11 +87,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// hide password
+	// Don't send password back
 	user.Password = ""
 
 	// Generate JWT token
-	jwtExpiry, _ := strconv.Atoi(os.Getenv("JWT_EXPIRY"))
+	jwtExpiry := h.jwtCfg.Exp
 	if jwtExpiry == 0 {
 		jwtExpiry = 60
 	}

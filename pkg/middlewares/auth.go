@@ -25,14 +25,6 @@ func VerifyAuthenticationToken(jwtKey string) func(handler http.Handler) http.Ha
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
-			skipPaths := []string{"/ping", "/api/auth/register", "/api/auth/login"}
-			for _, skipPath := range skipPaths {
-				if r.URL.Path == skipPath {
-					next.ServeHTTP(w, r)
-					return
-				}
-			}
-
 			// validate auth token
 			tokenString := getTokenFromHeader(r)
 			if tokenString == "" {

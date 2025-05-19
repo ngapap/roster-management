@@ -3,6 +3,7 @@ package jwt
 import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 var SIGNING_METHOD = jwt.SigningMethodHS256
@@ -25,11 +26,11 @@ func ValidateToken(tokenString string, jwtKey string) (jwt.MapClaims, error) {
 		} else if method != SIGNING_METHOD {
 			return nil, ErrInvalidMethod
 		}
-
-		return jwtKey, nil
+		return []byte(jwtKey), nil
 	})
 
 	if err != nil {
+		logrus.Error(err)
 		return nil, ErrInvalidSession
 	}
 

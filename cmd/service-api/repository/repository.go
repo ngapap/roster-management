@@ -23,9 +23,7 @@ type UserRepository interface {
 // ShiftRepository defines the interface for shift-related database operations
 type ShiftRepository interface {
 	CreateShift(ctx context.Context, shift *models.Shift) error
-	GetShiftByID(ctx context.Context, id string) (*models.Shift, error)
-	GetAvailableShift(ctx context.Context) ([]*models.Shift, error)
-	GetShiftByWorker(ctx context.Context, workerID string) ([]*models.Shift, error)
+	GetShifts(ctx context.Context, opts ...models.ShiftFilterOption) ([]*models.Shift, error)
 	UpdateShift(ctx context.Context, shift *models.Shift) error
 	DeleteShift(ctx context.Context, id string) error
 }

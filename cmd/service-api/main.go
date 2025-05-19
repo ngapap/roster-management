@@ -10,14 +10,15 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"roster-management/pkg/middlewares"
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/spf13/viper"
 
 	"roster-management/cmd/service-api/handler"
 	"roster-management/cmd/service-api/repository/postgres"
+	"roster-management/pkg/middlewares"
 )
 
 func enableCORS(next http.Handler) http.Handler {
@@ -35,25 +36,6 @@ func enableCORS(next http.Handler) http.Handler {
 	})
 }
 
-type customMux struct {
-	http.ServeMux
-	middlewares []func(http.Handler) http.Handler
-}
-
-func (cm *customMux) Use(middleware func(http.Handler) http.Handler) {
-	cm.middlewares = append(cm.middlewares, middleware)
-}
-
-func (cm *customMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var current http.Handler = &cm.ServeMux
-
-	for _, next := range cm.middlewares {
-		current = next(current)
-	}
-
-	current.ServeHTTP(w, r)
-}
-
 func main() {
 	configPath := flag.String("config", "configs/local.env", "config file")
 	config := viper.New()
@@ -66,19 +48,34 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	jwtKey := config.GetString("JWT_KEY")
+	hand := handler.NewHandlers(repo, jwtKey, config.GetInt("JWT_EXPIRY"))
 
-	hand := handler.NewHandlers(repo, config.GetString("JWT_KEY"), config.GetInt("JWT_EXPIRY"))
+	r := chi.NewRouter()
 
-	mux := new(customMux)
-
-	//set middlewares
-	mux.Use(middlewares.VerifyAuthenticationToken(config.GetString("JWT_KEY")))
-
-	mux.HandleFunc("GET /ping", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("GET /ping", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("pong"))
 	})
-	mux.HandleFunc("POST /api/auth/register", hand.RegisterWorker)
-	mux.HandleFunc("POST /api/auth/login", hand.Login)
+
+	r.Route("/api", func(r chi.Router) {
+
+		// auth
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", hand.RegisterWorker)
+			r.Post("/login", hand.Login)
+		})
+
+		// auth verification
+		r.Group(func(r chi.Router) {
+			r.Use(middlewares.VerifyAuthenticationToken(jwtKey))
+
+			//	shift
+			r.Route("/shift", func(r chi.Router) {
+				r.Post("/", hand.CreateShift)
+				r.Get("/available", hand.GetAvailableShifts)
+			})
+		})
+	})
 
 	_, port, err := net.SplitHostPort(config.GetString("SERVICE_API_HOST"))
 	if err != nil {
@@ -87,7 +84,7 @@ func main() {
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%s", port),
-		Handler: mux,
+		Handler: r,
 	}
 
 	// Start server in a goroutine
