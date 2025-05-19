@@ -15,7 +15,7 @@ type Repository interface {
 // UserRepository defines the interface for user-related database operations
 type UserRepository interface {
 	CreateUser(ctx context.Context, user *models.User) error
-	GetUserByID(ctx context.Context, id string) (*models.User, error)
+	GetUserByID(ctx context.Context, userID string) (*models.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*models.User, error)
 	UpdateUser(ctx context.Context, user *models.User) error
 }
@@ -25,22 +25,18 @@ type ShiftRepository interface {
 	CreateShift(ctx context.Context, shift *models.Shift) (string, error)
 	GetShifts(ctx context.Context, opts ...models.ShiftFilterOption) ([]*models.Shift, error)
 	UpdateShift(ctx context.Context, shift *models.Shift) error
-	DeleteShift(ctx context.Context, id string) error
+	DeleteShift(ctx context.Context, shiftID string) error
 }
 
 // ShiftRequestRepository defines the interface for shift request operations
 type ShiftRequestRepository interface {
-	CreateShiftRequest(ctx context.Context, request *models.ShiftRequest) error
-	GetShiftRequestByID(ctx context.Context, id string) (*models.ShiftRequest, error)
-	GetPendingShiftRequest(ctx context.Context) ([]*models.ShiftRequest, error)
-	GetShiftRequestByShift(ctx context.Context, shiftID string) ([]*models.ShiftRequest, error)
-	GetShiftRequestByWorker(ctx context.Context, workerID string) ([]*models.ShiftRequest, error)
-}
+	CreateShiftRequest(ctx context.Context, request *models.ShiftRequest) (string, error)
+	GetShiftRequests(ctx context.Context, opts ...models.ShiftRequestFilterOption) ([]*models.ShiftRequest, error)
+	UpdateShiftRequest(ctx context.Context, shift *models.ShiftRequest) error
+	DeleteShiftRequest(ctx context.Context, reqID string) error
 
-// WorkerAvailabilityRepository defines the interface for worker availability operations
-//type WorkerAvailabilityRepository interface {
-//	Create(ctx context.Context, availability *models.WorkerAvailability) error
-//	GetByWorker(ctx context.Context, workerID string) ([]*models.WorkerAvailability, error)
-//	Update(ctx context.Context, availability *models.WorkerAvailability) error
-//	Delete(ctx context.Context, id string) error
-//}
+	//GetShiftRequestByID(ctx context.Context, id string) (*models.ShiftRequest, error)
+	//GetPendingShiftRequest(ctx context.Context) ([]*models.ShiftRequest, error)
+	//GetShiftRequestByShift(ctx context.Context, shiftID string) ([]*models.ShiftRequest, error)
+	//GetShiftRequestByWorker(ctx context.Context, workerID string) ([]*models.ShiftRequest, error)
+}

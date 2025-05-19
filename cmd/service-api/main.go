@@ -72,7 +72,23 @@ func main() {
 			//	shift
 			r.Route("/shift", func(r chi.Router) {
 				r.Post("/", hand.CreateShift)
+				r.Put("/{shiftID}", hand.UpdateShift)
+				r.Delete("/{shiftID}", hand.DeleteShift)
 				r.Get("/available", hand.GetAvailableShifts)
+
+				// worker
+				r.Get("/worker/{workerID}", hand.GetShiftByWorker)
+
+			})
+
+			// shift-request
+			r.Route("/shift-request", func(r chi.Router) {
+				r.Post("/", hand.CreateShiftRequest)
+				r.Put("/{requestID}", hand.UpdateShiftRequest)
+				r.Delete("/{requestID}", hand.DeleteShiftRequest)
+
+				// worker
+				r.Get("/worker/{workerID}", hand.GetShiftRequestByWorker)
 			})
 		})
 	})

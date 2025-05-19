@@ -23,6 +23,20 @@ type Shift struct {
 	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
 }
 
+type CreateShiftPayload struct {
+	StartTime  time.Time `json:"start_time" `
+	EndTime    time.Time `json:"end_time" `
+	Role       string    `json:"role" `
+	AssignedTo string    `json:"assigned_to,omitempty" `
+}
+
+type UpdateShiftPayload struct {
+	StartTime  time.Time `json:"start_time" db:"start_time"`
+	EndTime    time.Time `json:"end_time" db:"end_time"`
+	Role       string    `json:"role" db:"role"`
+	AssignedTo string    `json:"assigned_to,omitempty" db:"assigned_to"`
+}
+
 type ShiftFilter struct {
 	ID          string    `json:"id"`
 	StartTime   time.Time `json:"start_time"`

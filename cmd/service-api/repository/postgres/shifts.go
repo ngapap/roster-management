@@ -26,6 +26,7 @@ func (r *Repository) CreateShift(ctx context.Context, shift *models.Shift) (stri
 	row := r.db.QueryRowContext(ctx, query,
 		shift.StartTime, shift.EndTime, workerID,
 		shift.Role, shift.IsAvailable)
+
 	var ID string
 	if err := row.Scan(&ID); err != nil {
 		return "", err
@@ -62,6 +63,7 @@ func (r *Repository) GetShifts(ctx context.Context, opts ...models.ShiftFilterOp
 			&workerID,
 			&item.IsAvailable,
 			&item.CreatedAt,
+			&item.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -76,6 +78,14 @@ func (r *Repository) GetShifts(ctx context.Context, opts ...models.ShiftFilterOp
 }
 
 func (r *Repository) UpdateShift(ctx context.Context, shift *models.Shift) error {
+	workerID := sql.NullString{
+		String: shift.AssignedTo,
+		Valid:  true,
+	}
+	if err := uuid.Validate(shift.AssignedTo); err != nil {
+		workerID.Valid = false
+	}
+
 	query := `
 		UPDATE shifts
 		SET  start_time = $1, end_time = $2, role = $3, 
@@ -84,19 +94,19 @@ func (r *Repository) UpdateShift(ctx context.Context, shift *models.Shift) error
 	`
 	_, err := r.db.ExecContext(ctx, query,
 		shift.StartTime, shift.EndTime, shift.Role,
-		shift.AssignedTo, shift.IsAvailable, shift.ID)
+		workerID, shift.IsAvailable, shift.ID)
 	return err
 }
 
 func (r *Repository) DeleteShift(ctx context.Context, ID string) error {
-	query := `DELETE FROM shifts WHERE ID = $1`
+	query := `DELETE FROM shifts WHERE id = $1`
 	_, err := r.db.ExecContext(ctx, query, ID)
 	return err
 }
 
 func (r *Repository) buildGetShiftFilter(filter *models.ShiftFilter) (string, map[string]interface{}) {
 	params := map[string]interface{}{}
-	query := bytes.NewBufferString(`SELECT id, start_time, end_time, role, assigned_to, is_available,  created_at FROM shifts`)
+	query := bytes.NewBufferString(`SELECT id, start_time, end_time, role, assigned_to, is_available, created_at, updated_at FROM shifts`)
 
 	conds := postgres.Conditions{}
 	if filter.ID != "" {
@@ -147,7 +157,7 @@ func (r *Repository) buildGetShiftFilter(filter *models.ShiftFilter) (string, ma
 				Operator: postgres.OperatorEqual,
 				Value:    fmt.Sprintf(":%s", colName),
 			})
-			params[colName] = filter.Role
+			params[colName] = filter.AssignedTo
 		}
 
 		if filter.IsAvailable != models.EmptyStrBool {
