@@ -1,0 +1,68 @@
+@startuml Worker Shift Assignment Journey
+
+actor Worker
+actor Admin
+participant "Web App" as WebApp
+participant "Service API" as API
+database "PostgreSQL" as DB
+
+== Registration & Login ==
+Worker -> WebApp: Access registration
+WebApp -> API: POST /api/auth/register
+API -> DB: Create worker
+DB --> API: Worker created
+API --> WebApp: Return worker data
+WebApp --> Worker: Redirect to login
+
+Worker -> WebApp: Login
+WebApp -> API: POST /api/auth/login
+API -> DB: Verify credentials
+DB --> API: Worker data
+API --> WebApp: Return JWT token
+WebApp --> Worker: Redirect to dashboard
+
+== Shift Assignment Flow ==
+Worker -> WebApp: View available shifts
+WebApp -> API: GET /api/shift/available
+API -> DB: Query available shifts
+DB --> API: List of shifts
+API --> WebApp: Return available shifts
+WebApp --> Worker: Display shifts
+
+Worker -> WebApp: Request shift
+WebApp -> API: POST /api/shift-request/
+note right: Includes shift_id and worker_id
+API -> DB: Create shift request
+DB --> API: Request created
+API --> WebApp: Return request status
+WebApp --> Worker: Show pending status
+
+== Admin API Operations ==
+note over Admin,API
+  Admin operations are performed
+  directly through the API
+  using Postman or similar tools
+end note
+
+Admin -> API: GET /api/shift-request/pending
+note right: Using admin_token
+API -> DB: Query pending requests
+DB --> API: List of requests
+API --> Admin: Return pending requests
+
+Admin -> API: PUT /api/shift-request/{request_id}
+note right: Using admin_token
+note right: Update status to "approved"
+API -> DB: Update request status
+DB --> API: Request updated
+API --> Admin: Return updated status
+
+== Check Assignment ==
+Worker -> WebApp: View assigned shifts
+WebApp -> API: GET /api/shift/worker
+API -> DB: Query assigned shifts
+DB --> API: List of assigned shifts
+API --> WebApp: Return assigned shifts
+WebApp --> Worker: Display assigned shifts
+
+@enduml 
