@@ -1,46 +1,41 @@
 <script>
   import { users } from '$lib/stores/shiftStore.js';
   
-  const { shift, onRequest = (id = 0) => {} } = $props();
-  
-  let assignedUser = $state(null);
-  
-  $effect(() => {
-    if (shift.assignedTo) {
-      assignedUser = $users.find(user => user.id === shift.assignedTo);
-    } else {
-      assignedUser = null;
-    }
-  });
-  
+  const { isSubmitting, shift } = $props(); 
+  console.log("shift", shift);
   function formatTime(time) {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const period = hour >= 12 ? 'PM' : 'AM';
-    const formattedHour = hour % 12 || 12;
-    return `${formattedHour}:${minutes} ${period}`;
+    const date = new Date(time);
+    const utcHours = date.getUTCHours();
+    const utcMinutes = date.getUTCMinutes().toString().padStart(2, '0');
+    const period = utcHours >= 12 ? 'PM' : 'AM';
+    const formattedHour = utcHours % 12 || 12;
+    return `${formattedHour}:${utcMinutes} ${period} UTC`;
   }
 </script>
 
-<div class="rounded-card border-muted bg-background shadow-card p-4 w-full flex flex-col">
-  <div class="flex justify-between items-start mb-2">
+<div class="bg-background rounded-lg shadow-card p-4 border border-gray-200">
+  <div class="flex justify-between items-start mb-4">
     <div>
-      <h3 class="text-lg font-semibold">{new Date(shift.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</h3>
-      <p class="text-muted-foreground text-sm">{formatTime(shift.startTime)} - {formatTime(shift.endTime)}</p>
-    </div>
-    
-    <div class="text-sm rounded-full px-2 py-1 font-medium" class:bg-green-100={shift.status === 'approved'} class:text-green-800={shift.status === 'approved'} class:bg-blue-100={shift.status === 'available'} class:text-blue-800={shift.status === 'available'}>
-      {shift.status === 'approved' ? 'Assigned' : 'Available'}
+      <h3 class="text-lg font-semibold text-gray-900">
+        {new Date(shift.start_time).toUTCString().split(' ').slice(0,4).join(' ')}
+        {new Date(shift.start_time).getUTCDate() !== new Date(shift.end_time).getUTCDate() ? 
+          `- ${new Date(shift.end_time).toUTCString().split(' ').slice(0,4).join(' ')}` : 
+          ''}
+      </h3>
+      <p class="text-gray-600 mt-1">{formatTime(shift.start_time)} - {formatTime(shift.end_time)}</p>
+      <p class="text-sm text-gray-500 mt-1">ID: {shift.id}</p>
     </div>
   </div>
   
-  {#if assignedUser}
-    <p class="text-sm text-muted-foreground mt-1">Assigned to: {assignedUser.name}</p>
-  {/if}
-  
-  {#if shift.status === 'available'}
-    <button onclick={() => onRequest(shift.id)} class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded text-sm">
-      Request Shift
+  {#if shift.is_available}
+  <div class="flex justify-start">
+    <button 
+      type="submit"
+      class="px-5 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      disabled={isSubmitting ?? false}
+    >
+      {isSubmitting ? 'Requesting...' : 'Request Shift'}
     </button>
+  </div>
   {/if}
-</div> 
+</div>

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/spf13/viper"
 
 	"roster-management/cmd/service-api/handler"
@@ -21,20 +22,20 @@ import (
 	"roster-management/pkg/middlewares"
 )
 
-func enableCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+// func enableCORS(next http.Handler) http.Handler {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+// 		w.Header().Set("Access-Control-Allow-Origin", "*")
+// 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+// 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
+// 		if r.Method == "OPTIONS" {
+// 			w.WriteHeader(http.StatusNoContent)
+// 			return
+// 		}
 
-		next.ServeHTTP(w, r)
-	})
-}
+// 		next.ServeHTTP(w, r)
+// 	})
+// }
 
 func main() {
 	configPath := flag.String("config", "configs/local.env", "config file")
@@ -52,6 +53,12 @@ func main() {
 	hand := handler.NewHandlers(repo, jwtKey, config.GetInt("JWT_EXPIRY"))
 
 	r := chi.NewRouter()
+
+	r.Use(middleware.RealIP)
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(middlewares.Cors)
 
 	r.HandleFunc("GET /ping", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("pong"))
@@ -75,6 +82,7 @@ func main() {
 				r.Put("/{shiftID}", hand.UpdateShift)
 				r.Delete("/{shiftID}", hand.DeleteShift)
 				r.Get("/available", hand.GetAvailableShifts)
+				r.Get("/assigned", hand.GetAssignedShifts)
 
 				// worker
 				r.Get("/worker/{workerID}", hand.GetShiftByWorker)

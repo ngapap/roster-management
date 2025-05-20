@@ -1,13 +1,13 @@
 <script>
   import { shifts, users } from '$lib/stores/shiftStore.js';
   
-  const { request, onApprove = () => {}, onReject = () => {}, isAdmin = false } = $props();
+  const { request, name, onApprove = () => {}, onReject = () => {}, isAdmin = false } = $props();
   
   // Find the shift data
-  const shift = $derived($shifts.find(s => s.id === request.shiftId));
+  const shift = $derived($shifts.find(s => s.id === request.shift_id));
   
   // Find the user data
-  const user = $derived($users.find(u => u.id === request.userId));
+  const user = $derived($users.find(u => u.id === request.worker_id));
   
   function formatDate(dateStr) {
     return new Date(dateStr).toLocaleDateString('en-US', { 
@@ -31,13 +31,13 @@
   }
 </script>
 
-<div class="rounded-card border-muted bg-background shadow-card p-4 w-full">
-  {#if shift && user}
+<div class="bg-background rounded-lg shadow-card p-4 border border-gray-200 cursor-pointer max-w-md">
+  <!-- {#if shift && user} -->
     <div class="flex justify-between items-start">
       <div>
-        <h3 class="text-lg font-semibold">{formatDate(shift.date)}</h3>
-        <p class="text-muted-foreground text-sm">Requested by: {user.name}</p>
-        <p class="text-muted-foreground text-sm">Requested on: {formatDate(request.requestDate)}</p>
+        <h3 class="text-lg font-semibold">{request.shift_id}</h3>
+        <p class="text-muted-foreground text-sm">Requested by: {name}</p>
+        <p class="text-muted-foreground text-sm">Requested on: {formatDate(request.created_at)}</p>
       </div>
       
       <div class="text-sm rounded-full px-2 py-1 font-medium {getStatusClass(request.status)}">
@@ -48,20 +48,18 @@
     {#if isAdmin && request.status === 'pending'}
       <div class="flex gap-2 mt-3">
         <button
-          on:click={() => onApprove(request.id)}
+          onclick={() => onApprove(request.id)}
           class="bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm"
         >
           Approve
         </button>
         <button
-          on:click={() => onReject(request.id)}
+          onclick={() => onReject(request.id)}
           class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-3 rounded text-sm"
         >
           Reject
         </button>
       </div>
     {/if}
-  {:else}
-    <p>Invalid request data</p>
-  {/if}
+
 </div> 

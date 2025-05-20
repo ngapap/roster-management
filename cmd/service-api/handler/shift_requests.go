@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"roster-management/internal/models"
+	"roster-management/pkg/util"
 )
 
 func (h *Handler) CreateShiftRequest(w http.ResponseWriter, r *http.Request) {
@@ -21,14 +22,14 @@ func (h *Handler) CreateShiftRequest(w http.ResponseWriter, r *http.Request) {
 	user, err := h.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when fetch user info", http.StatusInternalServerError)
+		util.SendResponse(w, http.StatusInternalServerError, nil, "err when fetch user info")
 		return
 	}
 
 	payload := new(models.CreateShiftRequestPayload)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when parsing payload", http.StatusBadRequest)
+		util.SendResponse(w, http.StatusBadRequest, nil, "err when parsing payload")
 		return
 	}
 
@@ -36,19 +37,19 @@ func (h *Handler) CreateShiftRequest(w http.ResponseWriter, r *http.Request) {
 	shifts, err := h.repo.GetShifts(ctx, models.WithID(payload.ShiftID))
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when getting shifts", http.StatusInternalServerError)
+		util.SendResponse(w, http.StatusInternalServerError, nil, "err when getting shifts")
 		return
 	}
 
 	if len(shifts) == 0 {
-		http.Error(w, "shift not found", http.StatusBadRequest)
+		util.SendResponse(w, http.StatusBadRequest, nil, "shift not found")
 		return
 	}
 
 	shift := shifts[0]
 	// bypass shift availability when requesting as admin for further approval
 	if !shift.IsAvailable && !user.IsAdmin {
-		http.Error(w, "shift already assigned to someone else", http.StatusForbidden)
+		util.SendResponse(w, http.StatusForbidden, nil, "shift already assigned to someone else")
 		return
 	}
 
@@ -56,7 +57,7 @@ func (h *Handler) CreateShiftRequest(w http.ResponseWriter, r *http.Request) {
 	lastShift, err := h.repo.GetLastShiftByWorker(ctx, payload.WorkerID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		logrus.Error(err)
-		http.Error(w, "err when getting last shift", http.StatusInternalServerError)
+		util.SendResponse(w, http.StatusInternalServerError, nil, "err when getting last shift")
 		return
 	}
 
@@ -64,13 +65,13 @@ func (h *Handler) CreateShiftRequest(w http.ResponseWriter, r *http.Request) {
 	weeklyShift, err := h.repo.CountWeeklyShiftByWorker(ctx, payload.WorkerID)
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when fetching weekly shift", http.StatusInternalServerError)
+		util.SendResponse(w, http.StatusInternalServerError, nil, "err when fetching weekly shift")
 		return
 	}
 
 	if err := validateShiftRequest(shift, lastShift, weeklyShift); err != nil {
 		logrus.Error(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		util.SendResponse(w, http.StatusBadRequest, nil, err)
 		return
 	}
 
@@ -82,7 +83,7 @@ func (h *Handler) CreateShiftRequest(w http.ResponseWriter, r *http.Request) {
 	reqID, err := h.repo.CreateShiftRequest(ctx, res)
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when creating payload request", http.StatusInternalServerError)
+		util.SendResponse(w, http.StatusInternalServerError, nil, "err when creating payload request")
 		return
 	}
 	res.ID = reqID
@@ -92,10 +93,7 @@ func (h *Handler) CreateShiftRequest(w http.ResponseWriter, r *http.Request) {
 		res = requests[0]
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(res)
-
+	util.SendResponse(w, http.StatusOK, res, nil)
 	logrus.Println("successfully updates shift request")
 }
 
@@ -106,37 +104,37 @@ func (h *Handler) UpdateShiftRequest(w http.ResponseWriter, r *http.Request) {
 	user, err := h.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when fetch user info", http.StatusInternalServerError)
+		util.SendResponse(w, http.StatusInternalServerError, nil, "err when fetch user info")
 		return
 	}
 	if !user.IsAdmin {
-		http.Error(w, "require admin access", http.StatusUnauthorized)
+		util.SendResponse(w, http.StatusUnauthorized, nil, "require admin access")
 		return
 	}
 
 	reqID, err := uuid.Parse(chi.URLParam(r, "requestID"))
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "invalid uuid", http.StatusBadRequest)
+		util.SendResponse(w, http.StatusBadRequest, nil, "invalid uuid")
 		return
 	}
 
 	payload := new(models.UpdateShiftRequestPayload)
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when parsing payload", http.StatusBadRequest)
+		util.SendResponse(w, http.StatusBadRequest, nil, "err when parsing payload")
 		return
 	}
 
 	requests, err := h.repo.GetShiftRequests(ctx, models.WithRequestID(reqID.String()))
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when fetching shift requests", http.StatusBadRequest)
+		util.SendResponse(w, http.StatusBadRequest, nil, "err when fetching shift requests")
 		return
 	}
 
 	if len(requests) < 1 {
-		http.Error(w, "shift request not found", http.StatusNotFound)
+		util.SendResponse(w, http.StatusNotFound, nil, "shift request not found")
 		return
 	}
 
@@ -148,7 +146,7 @@ func (h *Handler) UpdateShiftRequest(w http.ResponseWriter, r *http.Request) {
 		shifts, err := h.repo.GetShifts(ctx, models.WithID(res.ShiftID))
 		if err != nil {
 			logrus.Error(err)
-			http.Error(w, "err when getting shifts", http.StatusInternalServerError)
+			util.SendResponse(w, http.StatusInternalServerError, nil, "err when getting shifts")
 			return
 		}
 		if len(shifts) > 0 {
@@ -158,20 +156,20 @@ func (h *Handler) UpdateShiftRequest(w http.ResponseWriter, r *http.Request) {
 			lastShift, err := h.repo.GetLastShiftByWorker(ctx, res.WorkerID)
 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				logrus.Error(err)
-				http.Error(w, "err when getting last shift", http.StatusInternalServerError)
+				util.SendResponse(w, http.StatusInternalServerError, nil, "err when getting last shift")
 				return
 			}
 
 			weeklyShift, err := h.repo.CountWeeklyShiftByWorker(ctx, res.WorkerID)
 			if err != nil {
 				logrus.Error(err)
-				http.Error(w, "err when fetching weekly shift", http.StatusInternalServerError)
+				util.SendResponse(w, http.StatusInternalServerError, nil, "err when fetching weekly shift")
 				return
 			}
 
 			if err := validateShiftRequest(shift, lastShift, weeklyShift); err != nil {
 				logrus.Error(err)
-				http.Error(w, err.Error(), http.StatusBadRequest)
+				util.SendResponse(w, http.StatusBadRequest, nil, err)
 				return
 			}
 
@@ -179,7 +177,7 @@ func (h *Handler) UpdateShiftRequest(w http.ResponseWriter, r *http.Request) {
 			shift.IsAvailable = false
 			if err := h.repo.UpdateShift(ctx, shift); err != nil {
 				logrus.Error(err)
-				http.Error(w, "err when updating shift", http.StatusInternalServerError)
+				util.SendResponse(w, http.StatusInternalServerError, nil, "err when updating shift")
 				return
 			}
 		}
@@ -187,7 +185,7 @@ func (h *Handler) UpdateShiftRequest(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.repo.UpdateShiftRequest(ctx, res); err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when updating shift", http.StatusInternalServerError)
+		util.SendResponse(w, http.StatusInternalServerError, nil, "err when updating shift")
 		return
 	}
 
@@ -206,30 +204,28 @@ func (h *Handler) DeleteShiftRequest(w http.ResponseWriter, r *http.Request) {
 	user, err := h.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when fetch user info", http.StatusInternalServerError)
+		util.SendResponse(w, http.StatusInternalServerError, nil, "err when fetch user info")
 		return
 	}
 	if !user.IsAdmin {
-		http.Error(w, "require admin access", http.StatusUnauthorized)
+		util.SendResponse(w, http.StatusUnauthorized, nil, "require admin access")
 		return
 	}
 
 	reqID, err := uuid.Parse(chi.URLParam(r, "requestID"))
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "invalid uuid", http.StatusBadRequest)
+		util.SendResponse(w, http.StatusBadRequest, nil, "invalid uuid")
 		return
 	}
 
 	if err := h.repo.DeleteShiftRequest(ctx, reqID.String()); err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when deleting shift", http.StatusInternalServerError)
+		util.SendResponse(w, http.StatusInternalServerError, nil, "err when deleting shift")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode("data has been deleted")
+	util.SendResponse(w, http.StatusOK, "data has been deleted", nil)
 
 	logrus.Println("successfully deletes shift request")
 }
@@ -240,21 +236,18 @@ func (h *Handler) GetShiftRequestByWorker(w http.ResponseWriter, r *http.Request
 	workerID, err := uuid.Parse(chi.URLParam(r, "workerID"))
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "invalid uuid", http.StatusBadRequest)
+		util.SendResponse(w, http.StatusBadRequest, nil, "invalid uuid")
 		return
 	}
 
 	requests, err := h.repo.GetShiftRequests(ctx, models.WithWorkerID(workerID.String()))
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when fetching shift requests", http.StatusBadRequest)
+		util.SendResponse(w, http.StatusBadRequest, nil, "err when fetching shift requests")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(requests)
-
+	util.SendResponse(w, http.StatusOK, requests, nil)
 	logrus.Println("successfully fetch  shift request")
 }
 
@@ -265,25 +258,25 @@ func (h *Handler) GetPendingShiftRequest(w http.ResponseWriter, r *http.Request)
 	user, err := h.repo.GetUserByID(ctx, userID)
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when fetch user info", http.StatusInternalServerError)
+		util.SendResponse(w, http.StatusInternalServerError, nil, "err when fetch user info")
 		return
+	}
+
+	opts := []models.ShiftRequestFilterOption{
+		models.WithStatus([]string{string(models.PendingShiftRequest)}...),
 	}
 	if !user.IsAdmin {
-		http.Error(w, "require admin access", http.StatusUnauthorized)
-		return
+		opts = append(opts, models.WithWorkerID(userID))
 	}
 
-	requests, err := h.repo.GetShiftRequests(ctx, models.WithStatus([]string{string(models.PendingShiftRequest)}...))
+	requests, err := h.repo.GetShiftRequests(ctx, opts...)
 	if err != nil {
 		logrus.Error(err)
-		http.Error(w, "err when fetching shift requests", http.StatusBadRequest)
+		util.SendResponse(w, http.StatusBadRequest, nil, "err when fetching shift requests")
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(requests)
-
+	util.SendResponse(w, http.StatusOK, requests, nil)
 	logrus.Println("successfully fetch shift request")
 }
 
@@ -296,7 +289,7 @@ func validateShiftRequest(reqShift, lastShift *models.Shift, weeklyQuota int) er
 		return y1 == y2 && m1 == m2 && d1 == d2
 	}
 
-	if sameDay(reqShift.StartTime, lastShift.EndTime) {
+	if sameDay(reqShift.StartTime, lastShift.StartTime) {
 		return errors.New("maximum one shift per day")
 	}
 

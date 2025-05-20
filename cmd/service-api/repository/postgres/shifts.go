@@ -70,6 +70,8 @@ func (r *Repository) GetShifts(ctx context.Context, opts ...models.ShiftFilterOp
 		); err != nil {
 			return nil, err
 		}
+
+		item.AssignedTo = workerID.String
 		res = append(res, &item)
 	}
 

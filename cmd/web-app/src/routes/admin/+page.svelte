@@ -4,16 +4,20 @@
   import ShiftCard from '$lib/components/ShiftCard.svelte';
   import UserSelector from '$lib/components/UserSelector.svelte';
   
+  
+  let { data } = $props();
+
   // Get pending requests
-  const pendingRequests = $derived($requests.filter(req => req.status === 'pending'));
-  const sortedPendingRequests = $derived([...pendingRequests].sort((a, b) => new Date(a.requestDate).getTime() - new Date(b.requestDate).getTime()));
+  // console.log(data);
+  const pendingRequests = $derived(data?.shiftRequests ?? []);
+  const sortedPendingRequests = $derived([...pendingRequests].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()));
   
   // Get all assigned shifts
   const assignedShifts = $derived($shifts.filter(shift => shift.assignedTo !== null));
   const sortedAssignedShifts = $derived([...assignedShifts].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()));
   
   let activeTab = $state('requests');
-  let selectedShiftId = null;
+  let selectedShiftId = $state(null);
   
   function setActiveTab(tab) {
     activeTab = tab;

@@ -1,40 +1,50 @@
 # Build stage
-FROM node:20-alpine AS build
+FROM node:20-alpine AS builder
+WORKDIR /app
 
+# Define build arguments
+ARG SERVICE_API_HOST
+ARG VITE_SERVICE_API_HOST
+ARG PORT
+
+# Set build-time environment variables from ARGs
+ENV SERVICE_API_HOST=$SERVICE_API_HOST
+ENV VITE_SERVICE_API_HOST=$VITE_SERVICE_API_HOST
+ENV PORT=$PORT
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Install dependencies
+COPY package.json ./
+RUN pnpm install
+
+# Copy source code
+COPY . .
+
+# Build the SvelteKit app
+RUN pnpm build
+
+# Production stage
+FROM node:20-alpine
 WORKDIR /app
 
 # Install pnpm
 RUN npm install -g pnpm
 
-# Copy package.json and lock files
-COPY package.json pnpm-lock.yaml .npmrc ./
+# Copy necessary files from the builder stage
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Expose the port the app runs on
+EXPOSE ${PORT}
 
-# Copy the rest of the application
-COPY . .
-
-# Build the application
-RUN pnpm build
-
-# Runtime stage
-FROM node:20-alpine AS runtime
-
-WORKDIR /app
-
-# Install only production dependencies
-COPY --from=build /app/package.json /app/pnpm-lock.yaml /app/.npmrc ./
-RUN npm install -g pnpm && \
-    pnpm install --prod --frozen-lockfile
-
-# Copy build output
-COPY --from=build /app/build ./build
-COPY --from=build /app/node_modules ./node_modules
-
-# Set default port and allow override via environment variable
-ENV PORT=3000
-EXPOSE $PORT
+# Set runtime environment variables
+ENV NODE_ENV=production
+ENV SERVICE_API_HOST=$SERVICE_API_HOST
+ENV VITE_SERVICE_API_HOST=$VITE_SERVICE_API_HOST
+ENV PORT=$PORT
 
 # Start the application
-CMD ["sh", "-c", "PORT=$PORT node build"] 
+CMD ["node", "build"]

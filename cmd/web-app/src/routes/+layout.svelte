@@ -23,18 +23,17 @@
 				{#if data.user.isAuthenticated}
 					<div class="flex items-center gap-4">
 						<div class="text-sm">
-							Logged in as: <span class="font-medium">{$currentUser.name}</span>
+							Logged in as: <span class="font-medium">{data.user.name}</span>
 							<span class="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-								{$currentUser.role}
+								{data.user.isAdmin ? 'Admin' : 'Worker'}
 							</span>
 						</div>
-						
-						<button 
 
-							class="text-sm text-red-600 hover:text-red-800 font-medium"
-						>
-							Logout
-						</button>
+						<form method="POST" action="/logout">
+							<button type="submit" class="text-sm text-red-600 hover:text-red-800 font-medium">
+								Logout
+							</button>
+						</form>
 					</div>
 				{:else}
 					<div class="flex items-center gap-4">
@@ -48,10 +47,10 @@
 			
 			{#if data.user.isAuthenticated}
 				<nav class="mt-4 flex gap-4">
-					{#if $currentUser.role === 'admin'}
+					{#if data.user.isAdmin}
 						<a href="/admin" class="text-muted-foreground hover:text-foreground font-medium">Admin Panel</a>
 					{:else}
-						<a href="/" class="text-muted-foreground hover:text-foreground font-medium">My Schedule</a>
+						<a href="/assignment" class="text-muted-foreground hover:text-foreground font-medium">My Assignment</a>
 					{/if}
 					<a href="/available" class="text-muted-foreground hover:text-foreground font-medium">Available Shifts</a>
 					<a href="/requests" class="text-muted-foreground hover:text-foreground font-medium">My Requests</a>

@@ -14,14 +14,14 @@
     <p class="text-muted-foreground mt-2">Enter your credentials to access your account</p>
   </div>
   
-  <form action="?/login" method="post" class="bg-background rounded-card shadow-card p-6" use:enhance={() => {
+  <form action="?/login" method="post" enctype="application/x-www-form-urlencoded" class="bg-background rounded-card shadow-card p-6" use:enhance={() => {
 			isLoading = true;
-      console.log("holaaa");
 			return async ({ update, result }) => {
 				await update();
         isLoading = false;
+        console.log("result", result);
         if (result.data?.success) {
-          goto('/');
+          goto(result.data.redirectTo);
         }
 			};
 		}}>
@@ -73,7 +73,7 @@
     </div>
   </form>
   
-  <div class="mt-8 text-center text-sm text-muted-foreground">
+  <!-- <div class="mt-8 text-center text-sm text-muted-foreground">
     <p class="mb-2">Demo Accounts:</p>
     <div class="grid grid-cols-2 gap-4">
       <div class="bg-muted rounded-card p-3">
@@ -83,9 +83,9 @@
       </div>
       <div class="bg-muted rounded-card p-3">
         <div class="font-medium mb-1">Admin</div>
-        <div class="text-xs">admin@example.com</div>
-        <div class="text-xs">admin123</div>
+        <div class="text-xs">admin@roster.com</div>
+        <div class="text-xs">Password.1</div>
       </div>
     </div>
-  </div>
+  </div> -->
 </div> 
