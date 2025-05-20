@@ -86,6 +86,7 @@ func main() {
 				r.Post("/", hand.CreateShiftRequest)
 				r.Put("/{requestID}", hand.UpdateShiftRequest)
 				r.Delete("/{requestID}", hand.DeleteShiftRequest)
+				r.Get("/pending", hand.GetPendingShiftRequest)
 
 				// worker
 				r.Get("/worker/{workerID}", hand.GetShiftRequestByWorker)

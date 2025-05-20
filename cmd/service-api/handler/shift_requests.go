@@ -96,7 +96,7 @@ func (h *Handler) CreateShiftRequest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(res)
 
-	logrus.Println("successfully updates payload request")
+	logrus.Println("successfully updates shift request")
 }
 
 func (h *Handler) UpdateShiftRequest(w http.ResponseWriter, r *http.Request) {
@@ -234,7 +234,58 @@ func (h *Handler) DeleteShiftRequest(w http.ResponseWriter, r *http.Request) {
 	logrus.Println("successfully deletes shift request")
 }
 
-func (h *Handler) GetShiftRequestByWorker(w http.ResponseWriter, r *http.Request) {}
+func (h *Handler) GetShiftRequestByWorker(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	workerID, err := uuid.Parse(chi.URLParam(r, "workerID"))
+	if err != nil {
+		logrus.Error(err)
+		http.Error(w, "invalid uuid", http.StatusBadRequest)
+		return
+	}
+
+	requests, err := h.repo.GetShiftRequests(ctx, models.WithWorkerID(workerID.String()))
+	if err != nil {
+		logrus.Error(err)
+		http.Error(w, "err when fetching shift requests", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(requests)
+
+	logrus.Println("successfully fetch  shift request")
+}
+
+func (h *Handler) GetPendingShiftRequest(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	userID := ctx.Value("user_id").(string)
+	user, err := h.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		logrus.Error(err)
+		http.Error(w, "err when fetch user info", http.StatusInternalServerError)
+		return
+	}
+	if !user.IsAdmin {
+		http.Error(w, "require admin access", http.StatusUnauthorized)
+		return
+	}
+
+	requests, err := h.repo.GetShiftRequests(ctx, models.WithStatus([]string{string(models.PendingShiftRequest)}...))
+	if err != nil {
+		logrus.Error(err)
+		http.Error(w, "err when fetching shift requests", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(requests)
+
+	logrus.Println("successfully fetch shift request")
+}
 
 // validateShiftRequest will check shift availability, daily and weekly worker quota, and overlapped shift
 func validateShiftRequest(reqShift, lastShift *models.Shift, weeklyQuota int) error {
