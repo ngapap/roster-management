@@ -26,6 +26,8 @@ type ShiftRepository interface {
 	GetShifts(ctx context.Context, opts ...models.ShiftFilterOption) ([]*models.Shift, error)
 	UpdateShift(ctx context.Context, shift *models.Shift) error
 	DeleteShift(ctx context.Context, shiftID string) error
+	GetLastShiftByWorker(ctx context.Context, workerID string) (*models.Shift, error)
+	CountWeeklyShiftByWorker(ctx context.Context, workerID string) (int, error)
 }
 
 // ShiftRequestRepository defines the interface for shift request operations

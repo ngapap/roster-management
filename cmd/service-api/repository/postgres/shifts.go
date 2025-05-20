@@ -5,8 +5,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+
 	"roster-management/internal/models"
 	"roster-management/pkg/postgres"
 )
@@ -102,6 +105,42 @@ func (r *Repository) DeleteShift(ctx context.Context, ID string) error {
 	query := `DELETE FROM shifts WHERE id = $1`
 	_, err := r.db.ExecContext(ctx, query, ID)
 	return err
+}
+
+func (r *Repository) GetLastShiftByWorker(ctx context.Context, workerID string) (*models.Shift, error) {
+	query := `SELECT 
+				id, start_time, end_time, role, assigned_to, is_available, created_at, updated_at FROM shifts 
+			  	WHERE assigned_to = $1 AND is_available = false ORDER BY end_time LIMIT 1`
+
+	request := &models.Shift{}
+	err := r.db.QueryRowContext(ctx, query, workerID).Scan(
+		&request.ID, &request.StartTime, &request.EndTime, &request.Role,
+		&request.AssignedTo, &request.IsAvailable, &request.CreatedAt, &request.UpdatedAt)
+
+	return request, err
+}
+
+func (r *Repository) CountWeeklyShiftByWorker(ctx context.Context, workerID string) (int, error) {
+	now := time.Now().UTC()
+	weekday := int(now.Weekday())
+	if weekday == 0 {
+		weekday = 7 // Sunday
+	}
+	weekStart := time.Date(now.Year(), now.Month(), now.Day()-weekday+1, 0, 0, 0, 0, time.UTC)
+	weekEnd := weekStart.AddDate(0, 0, 7)
+
+	var count int
+	query := `
+		SELECT COUNT(*) FROM shifts
+		WHERE end_time >= $1 AND end_time < $2 AND assigned_to = $3
+	`
+
+	err := r.db.QueryRowContext(ctx, query, weekStart, weekEnd, workerID).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
 
 func (r *Repository) buildGetShiftFilter(filter *models.ShiftFilter) (string, map[string]interface{}) {

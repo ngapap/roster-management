@@ -3,12 +3,14 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"net/http"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
-	"net/http"
+
 	"roster-management/internal/models"
-	"time"
 )
 
 // CreateShift creates a new shift, shift must be on 30 minutes interval and the duration must be between 4 and 12 hours.
@@ -176,18 +178,9 @@ func (h *Handler) DeleteShift(w http.ResponseWriter, r *http.Request) {
 // GetAvailableShifts will return all of unassigned shifts
 func (h *Handler) GetAvailableShifts(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	now := time.Now().UTC()
 
-	opts := []models.ShiftFilterOption{}
-	opts = append(opts, models.WithIsAvailable(models.TrueStr))
-
-	startTime, err := time.Parse(time.RFC3339, r.URL.Query().Get("start_time"))
-	if err != nil {
-		logrus.Warnf("err %s when parsing start_time: %s", err.Error(), r.URL.Query().Get("start_time"))
-	} else {
-		opts = append(opts, models.WithStartTime(startTime))
-	}
-
-	shifts, err := h.repo.GetShifts(ctx, opts...)
+	shifts, err := h.repo.GetShifts(ctx, models.WithIsAvailable(models.TrueStr), models.WithStartTime(now))
 	if err != nil {
 		logrus.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)

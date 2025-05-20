@@ -7,6 +7,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/uptrace/opentelemetry-go-extra/otelsql"
 	"github.com/uptrace/opentelemetry-go-extra/otelsqlx"
@@ -33,7 +34,7 @@ func newDBStringFromConfig(config *viper.Viper) string {
 
 func Open(config *viper.Viper) (*sql.DB, error) {
 	dbString := newDBStringFromConfig(config)
-
+	logrus.Println("dbstring", dbString)
 	db, err := otelsql.Open(Driver, dbString)
 	if err != nil {
 		return nil, err

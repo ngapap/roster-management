@@ -5,7 +5,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+
 	"github.com/jmoiron/sqlx"
+
 	"roster-management/internal/models"
 	"roster-management/pkg/postgres"
 )

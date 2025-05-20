@@ -35,6 +35,7 @@ func ValidateToken(tokenString string, jwtKey string) (jwt.MapClaims, error) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		logrus.Error(errors.New("token expired"))
 		return claims, nil
 	}
 

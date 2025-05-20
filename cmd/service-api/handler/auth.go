@@ -96,10 +96,11 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		jwtExpiry = 60
 	}
 	expAt := time.Now().Add(time.Duration(jwtExpiry) * time.Minute)
+
 	claims := jwt.MapClaims{
-		"email":     user.Email,
-		"id":        user.ID,
-		"expire_at": expAt.Format(time.RFC3339Nano),
+		"email": user.Email,
+		"id":    user.ID,
+		"nbf":   expAt.Unix(),
 	}
 
 	jwtToken, err := jwtPkg.CreateToken(claims, h.jwtCfg.Key)
