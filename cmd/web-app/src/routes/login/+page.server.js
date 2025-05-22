@@ -6,7 +6,7 @@ export const actions = {
         const formData = await request.formData();
         const email = formData.get('email');
         const password = formData.get('password');
-        
+        console.log("SERVICE_API_HOST", SERVICE_API_HOST);
         try {
             const response = await fetch(`http://${SERVICE_API_HOST}/api/auth/login`, {
                 method: 'POST',
